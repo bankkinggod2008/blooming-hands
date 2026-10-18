@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#13111c">
+  <meta name="description" content="Hand Chorus Studio — เปลี่ยนการเคลื่อนไหวของมือเป็นเสียงประสานแบบเรียลไทม์">
+  <title>Blooming Hands — Interactive Chorus Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="ambient ambient-one" aria-hidden="true"></div>
+  <div class="ambient ambient-two" aria-hidden="true"></div>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="logo-lockup">
+        <div class="logo-mark" aria-hidden="true">✳</div>
+        <div class="logo-name">blooming<span>hands</span><small>INTERACTIVE MUSIC EXPERIENCE</small></div>
+      </div>
+      <div class="topbar-right">
+        <span class="top-pill"><span class="status-pulse"></span> HAND TRACKING STUDIO</span>
+        <a class="top-link" href="https://www.youtube.com/watch?v=N9bashij_7c" target="_blank" rel="noopener noreferrer">ฟังเพลงต้นฉบับ <span aria-hidden="true">↗</span></a>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero" aria-label="แนะนำโปรเจกต์">
+        <div class="eyebrow"><span class="tiny-star">✦</span> THE SOUND OF MOVEMENT <span class="eyebrow-line"></span> EXPERIMENT 01</div>
+        <h1>Let your hands<br><em>make it bloom.</em><span class="hero-flower" aria-hidden="true">✿</span></h1>
+        <p>แค่ยกมือขึ้นหน้ากล้อง แล้วปล่อยให้ทุกการเคลื่อนไหว<br class="desktop-break">กลายเป็นเสียงประสานที่ค่อย ๆ เบ่งบานไปพร้อมกับคุณ</p>
+      </section>
+
+      <section class="studio-grid" aria-label="สตูดิโอแสดงกล้องและควบคุมเสียง">
+        <div class="preview-card">
+          <div class="card-head">
+            <div class="head-title"><span class="icon-circle">◎</span> LIVE CAMERA <span class="head-sub">/ กล้องของคุณ</span></div>
+            <span class="live-badge" id="cameraBadge"><span class="dot"></span><span id="cameraBadgeText">OFFLINE</span></span>
+          </div>
+          <div class="camera-stage" id="cameraStage">
+            <video id="video" autoplay muted playsinline aria-label="ภาพจากกล้อง"></video>
+            <canvas id="handCanvas" aria-hidden="true"></canvas>
+            <div class="camera-grain" aria-hidden="true"></div>
+            <div class="corner top-left" aria-hidden="true"></div>
+            <div class="corner top-right" aria-hidden="true"></div>
+            <div class="corner bottom-left" aria-hidden="true"></div>
+            <div class="corner bottom-right" aria-hidden="true"></div>
+            <div class="camera-empty" id="cameraEmpty">
+              <div class="hand-art" aria-hidden="true">
+                <svg viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="80" cy="80" r="74" stroke="currentColor" stroke-opacity=".17" stroke-dasharray="3 7"/>
+                  <circle cx="80" cy="80" r="57" stroke="currentColor" stroke-opacity=".12"/>
+                  <path d="M64 80V42c0-6 4-10 9-10s9 4 9 10v27-38c0-6 4-10 9-10s9 4 9 10v39-26c0-6 4-10 9-10s9 4 9 10v39-17c0-6 4-10 9-10s9 4 9 10v38c0 24-17 39-40 39h-5c-14 0-23-6-32-17L40 98c-4-5-4-11 1-15 5-4 11-3 15 1l8 9V80Z" transform="translate(-6 -2) scale(.91)" stroke="currentColor" stroke-width="3.3" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="m34 48-5-5M33 69H22M50 33l-3-7M132 29l4-7M145 57l8-4" stroke="currentColor" stroke-opacity=".65" stroke-width="2.7" stroke-linecap="round"/>
+                </svg>
+              </div>
+              <h2>Ready to bloom?</h2>
+              <p>เปิดกล้องแล้ววางมือให้อยู่ในกรอบ<br>เพื่อเริ่มสร้างเสียงเพลงด้วยมือของคุณ</p>
+              <button id="startCamera" class="button button-primary" type="button"><span class="button-icon" aria-hidden="true">◉</span> เปิดกล้อง &amp; เริ่มเล่น <span aria-hidden="true">↗</span></button>
+              <div class="permission-note">ใช้กล้องเพื่อประมวลผลบนอุปกรณ์เท่านั้น</div>
+            </div>
+            <div class="camera-info"><span id="trackingLabel">NO HAND DETECTED</span><span id="fpsLabel">— FPS</span></div>
+            <div class="in-cam-tip" id="inCamTip" hidden>ยกมือขึ้น แล้วลองโบกเบา ๆ ✨</div>
+          </div>
+          <div class="preview-bottom">
+            <div class="camera-bottom-status"><span class="mini-ring" id="cameraRing"></span><span id="statusText" role="status" aria-live="polite">พร้อมเริ่มต้นประสบการณ์</span></div>
+            <button id="stopCamera" class="text-button" type="button" disabled>ปิดกล้อง <span aria-hidden="true">×</span></button>
+          </div>
+        </div>
+
+        <div class="control-stack">
+          <section class="music-card">
+            <div class="card-head"><div class="head-title">✦ <span>CHORUS CONTROL</span> <span class="head-sub">/ เสียงที่เคลื่อนไหว</span></div><span class="tag">LIVE AUDIO</span></div>
+            <div class="song-art">
+              <div class="vinyl" aria-hidden="true"><div class="vinyl-inner">✿</div></div>
+              <div class="song-details"><span class="now-label" id="audioMode">DEMO CHORUS · SYNTH PAD</span><h2 id="songTitle">เพลงรักเพลงแรก</h2><p id="songSubtitle">LANDOKMAI · Interactive experience</p></div>
+            </div>
+            <canvas id="visualizer" width="660" height="112" aria-label="การแสดงภาพคลื่นเสียง"></canvas>
+            <div class="music-meta"><span><span class="music-live-dot"></span> <span id="audioState">รอการขยับมือ</span></span><span id="activityValue">0% ENERGY</span></div>
+            <div class="volume-title"><span>CHORUS INTENSITY</span><span id="intensityNumber">0%</span></div>
+            <div class="volume-meter" aria-label="ระดับความเข้มเสียง"><div class="volume-fill" id="intensityFill"></div><div class="volume-glow" id="intensityDot"></div></div>
+            <div class="music-controls">
+              <button id="previewAudio" type="button" class="button button-ghost">♫ <span id="previewText">ทดลองฟังเสียงตัวอย่าง</span></button>
+              <button id="muteAudio" type="button" class="icon-button" title="เปิดหรือปิดเสียง" aria-label="ปิดเสียง">♬</button>
+            </div>
+            <p class="mode-explainer" id="modeExplainer">เสียงเริ่มต้นเป็นเสียงสังเคราะห์ตัวอย่าง ไม่ใช่ท่อนร้องจากเพลงต้นฉบับ — อัปโหลดไฟล์เสียงที่มีสิทธิ์ใช้เพื่อเล่นท่อนเพลงจริง</p>
+          </section>
+
+          <section class="upload-card">
+            <div class="section-label">YOUR OWN CHORUS AUDIO <span aria-hidden="true">↗</span></div>
+            <label class="dropzone" id="dropZone" for="audioUpload">
+              <span class="upload-symbol" aria-hidden="true">♫</span>
+              <span class="drop-main" id="dropMain">อัปโหลดเสียงท่อนคอรัสของคุณ</span>
+              <span class="drop-desc" id="dropDesc">MP3, WAV, M4A หรือ OGG · ไม่ส่งไฟล์ขึ้นเซิร์ฟเวอร์</span>
+              <input id="audioUpload" type="file" accept="audio/*,.mp3,.wav,.m4a,.ogg" hidden>
+            </label>
+            <div id="trimControls" class="trim-controls" hidden>
+              <label>เริ่มวินาที <input id="startSecond" type="number" min="0" value="0" step="0.5"></label>
+              <label>สิ้นสุดวินาที <input id="endSecond" type="number" min="0" value="25" step="0.5"></label>
+              <button id="resetAudio" type="button" title="กลับไปใช้เสียงตัวอย่าง">↺ รีเซ็ต</button>
+            </div>
+            <audio id="uploadedTrack" preload="metadata"></audio>
+          </section>
+        </div>
+      </section>
+
+      <section class="guide-row" aria-label="วิธีควบคุมด้วยมือ">
+        <div class="guide-intro"><span class="section-kicker">THE MAGIC IS IN YOUR HANDS</span><h2>How it <em>works.</em></h2><p>ไม่ต้องแตะหน้าจอ แค่ปล่อยให้มือเป็นตัวนำเสียง</p></div>
+        <div class="gesture-card"><div class="gesture-emoji" aria-hidden="true">✋</div><div><strong>แบมือ + โบกเบา ๆ</strong><span>เริ่มคอรัสและค่อย ๆ เพิ่มเสียง</span></div><span class="gesture-num">01</span></div>
+        <div class="gesture-card"><div class="gesture-emoji" aria-hidden="true">〰</div><div><strong>ขยับมือให้เร็วขึ้น</strong><span>เสียงจะดังและมีพลังมากขึ้น</span></div><span class="gesture-num">02</span></div>
+        <div class="gesture-card"><div class="gesture-emoji" aria-hidden="true">✊</div><div><strong>กำมือหรือเอามือออก</strong><span>เสียงค่อย ๆ เบาลงจนหยุด</span></div><span class="gesture-num">03</span></div>
+      </section>
+    </main>
+    <footer><span>✳ BLOOMING HANDS © 2026</span><span>Made for little moments of music and magic.</span><span>CAMERA STAYS ON YOUR DEVICE <span aria-hidden="true">♡</span></span></footer>
+  </div>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
