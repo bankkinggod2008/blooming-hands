@@ -10,7 +10,8 @@ const ui = Object.fromEntries([
   'songTitle','songSubtitle','albumArt','albumSymbol','currentTime','durationTime','seekBar',
   'masterVolume','volumeValue','gestureMode','continuousMode','modeHelp',
   'playlist','trackCount','originalTab','myMusicTab','featuredTab','featureUpload','featuredInstructions','uploadCount','audioUpload','trimControls',
-  'startSecond','endSecond','resetTrim','musicAudio'
+  'startSecond','endSecond','resetTrim','musicAudio',
+  'melodyMode','chordMode','instrumentHint','detectedFingers','lastNote','melodyProgress','instrumentGrid','testSound','resetMelody','soundNotice'
 ].map(id => [id, $(id)]));
 const clamp = (v,min,max) => Math.min(max,Math.max(min,v));
 const SONGS = [
@@ -88,7 +89,9 @@ let uploads = [];
 let active = SONGS[0];
 let activeTab = 'original';
 let fileIndex = 0;
-let audioContext, analyser, musicGain, toneFilter, masterGain;
+let audioContext, analyser, musicGain, toneFilter, masterGain, instrumentGain;
+let instrumentMode='melody', melodyIndex=0, stableFingerCount=-1, pendingFingerCount=-1, pendingFingerSince=0, lastGestureAt=0;
+let demoTimer=null, demoPlaying=false, liveNote='—', soundReady=false;
 let previewActive = false, muted = false, mode = 'gesture';
 let targetEnergy = 0, energy = 0, handSpeed = 0, palmHeight = .5;
 let activeHandCount = 0, cameraActive = false, startupPending = false;
@@ -100,6 +103,143 @@ let startBusy = false, lastPlayRetry = 0;
 const MEDIAPIPE = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/vision_bundle.mjs';
 const WASM = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm';
 const MODEL = 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task';
+
+// All of these note sequences and progressions are NEW, original practice patterns.
+// The named artist tracks are selection presets, not artist transcriptions.
+const MELODY_PATTERNS = {
+  'requested-txrbo': [62,65,69,72,69,67,65,62,60,62,65,69,70,69,65,62],
+  'requested-landokmai': [64,67,69,72,74,72,69,67,65,69,72,76,74,72,69,67],
+  garden: [60,64,67,72,74,72,67,64,62,65,69,72,69,67,64,60],
+  neon: [67,71,74,76,74,71,69,67,72,74,79,76,74,72,71,67],
+  coffee: [57,60,64,67,69,67,64,60,59,62,65,69,67,64,62,59],
+  peach: [60,63,67,70,72,75,74,70,67,63,60,63,67,70,72,67],
+  cloud: [62,66,69,73,76,73,69,66,64,67,71,74,71,67,64,62],
+  pixels: [64,68,71,76,75,71,68,64,66,69,73,78,76,73,69,66]
+};
+const CHORD_ROOTS = {
+ 'requested-txrbo': 57, 'requested-landokmai': 60, garden:60, neon:67,
+ coffee:57, peach:60, cloud:62, pixels:64
+};
+const CHORD_SHAPES = [
+  {label:'I • Maj7', intervals:[0,4,7,11]},
+  {label:'ii • m7', intervals:[2,5,9,12]},
+  {label:'iii • m7', intervals:[4,7,11,14]},
+  {label:'IV • Maj7', intervals:[5,9,12,16]},
+  {label:'V • 7', intervals:[7,11,14,17]},
+  {label:'vi • m7', intervals:[9,12,16,19]},
+  {label:'IV • add9', intervals:[5,9,12,19]},
+  {label:'I • add9', intervals:[0,4,7,14]},
+  {label:'ii • m9', intervals:[2,5,9,12,16]},
+  {label:'I • Maj9', intervals:[0,4,7,11,14]}
+];
+const NOTE_NAMES = ['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'];
+function noteName(n){return `${NOTE_NAMES[((n%12)+12)%12]}${Math.floor(n/12)-1}`;}
+function getPattern(){return MELODY_PATTERNS[active.id]||MELODY_PATTERNS.garden;}
+function stopDemo(){if(demoTimer!==null){clearTimeout(demoTimer);demoTimer=null;}demoPlaying=false;}
+function resetMelody(){melodyIndex=0;ui.melodyProgress.textContent=`0 / ${getPattern().length}`;ui.lastNote.textContent='—';}
+function setupInstrumentUI(){
+ ui.instrumentGrid.replaceChildren();
+ for(let n=1;n<=10;n++){
+   const button=document.createElement('button');button.type='button';button.className='finger-button';
+   button.textContent=String(n);button.setAttribute('aria-label',`ทดลองชู ${n} นิ้ว`);
+   button.addEventListener('click',async()=>{
+     try{await unlockAudio();triggerInstrument(n,'manual');}catch(e){status(`เปิดเสียงไม่ได้: ${e.message}`);}
+   });
+   ui.instrumentGrid.append(button);
+ }
+}
+function setInstrumentMode(next){
+ instrumentMode=next==='chords'?'chords':'melody';stopDemo();previewActive=false;updatePlayUI();stableFingerCount=-1;pendingFingerCount=-1;
+ ui.melodyMode.classList.toggle('selected',instrumentMode==='melody');
+ ui.chordMode.classList.toggle('selected',instrumentMode==='chords');
+ ui.melodyMode.setAttribute('aria-pressed',String(instrumentMode==='melody'));
+ ui.chordMode.setAttribute('aria-pressed',String(instrumentMode==='chords'));
+ ui.instrumentHint.textContent=instrumentMode==='melody' ?
+ 'เปลี่ยนจำนวนนิ้ว 1–10 ทีละครั้งเพื่อเล่นโน้ตถัดไป · ลดมือเหลือ 0 แล้วชูจำนวนเดิมซ้ำได้' :
+ 'ชูนิ้ว 1–10 (รวม 2 มือ) เพื่อเล่นคอร์ดที่ 1–10 · เปลี่ยนจำนวนเพื่อเปลี่ยนคอร์ด';
+ ui.melodyProgress.parentElement.hidden=instrumentMode==='chords';
+ ui.lastNote.textContent='—';
+}
+function frequency(n){return 440*Math.pow(2,(n-69)/12);}
+function synthNotes(midiNotes, duration=.75){
+ if(!audioContext||audioContext.state!=='running'||!instrumentGain)return false;
+ const start=audioContext.currentTime+.008;
+ const count=Math.max(1,midiNotes.length);
+ midiNotes.forEach((n,i)=>{
+  const fundamental=frequency(n);
+  const amp=audioContext.createGain();
+  amp.gain.setValueAtTime(.0001,start);
+  amp.gain.exponentialRampToValueAtTime((count===1?.26:.19/Math.sqrt(count)),start+.024);
+  amp.gain.exponentialRampToValueAtTime((count===1?.16:.09/Math.sqrt(count)),start+Math.min(.21,duration*.4));
+  amp.gain.exponentialRampToValueAtTime(.0001,start+duration);
+  const osc=audioContext.createOscillator();osc.type='triangle';osc.frequency.setValueAtTime(fundamental,start);
+  osc.connect(amp);
+  const shine=audioContext.createOscillator();shine.type='sine';shine.frequency.setValueAtTime(fundamental*2,start);
+  const shineGain=audioContext.createGain();shineGain.gain.value=.10;
+  shine.connect(shineGain).connect(amp);
+  amp.connect(instrumentGain);
+  osc.start(start);shine.start(start);osc.stop(start+duration+.03);shine.stop(start+duration+.03);
+  osc.onended=()=>{try{osc.disconnect();shine.disconnect();shineGain.disconnect();amp.disconnect();}catch(e){}};
+ });
+ soundReady=true;return true;
+}
+function triggerInstrument(count, origin='camera'){
+ if(!Number.isInteger(count)||count<1||count>10)return;
+ if(demoPlaying){stopDemo();previewActive=false;updatePlayUI();}
+ if(instrumentMode==='melody'){
+  const score=getPattern(),note=score[melodyIndex%score.length];
+  if(!synthNotes([note],.68)){status('แตะ “ทดสอบเสียง” เพื่อเปิดระบบเสียง');return;}
+  melodyIndex++;
+  ui.lastNote.textContent=noteName(note);
+  ui.melodyProgress.textContent=`${melodyIndex%score.length} / ${score.length}`;
+ }else{
+  const shape=CHORD_SHAPES[count-1],root=CHORD_ROOTS[active.id]||60;
+  if(!synthNotes(shape.intervals.map(x=>root+x),1.15)){status('แตะ “ทดสอบเสียง” เพื่อเปิดระบบเสียง');return;}
+  ui.lastNote.textContent=shape.label;
+ }
+ ui.detectedFingers.textContent=String(count);
+ for(const [i,b] of Array.from(ui.instrumentGrid.children).entries())b.classList.toggle('finger-active',i===count-1);
+ if(!muted)audioStatus(instrumentMode==='melody'?`เล่นโน้ต ${ui.lastNote.textContent}`:`เล่นคอร์ด ${ui.lastNote.textContent}`);
+ status(origin==='manual'?`🔊 ทดสอบ ${count} นิ้ว สำเร็จ · ${ui.lastNote.textContent}`:
+    `🎶 ตรวจพบ ${count} นิ้ว · ${ui.lastNote.textContent}`);
+}
+async function testInstrument(){
+ try{
+  await unlockAudio();
+  stopDemo();
+  if(!muted){
+    synthNotes([60,64,67],.85);
+    ui.lastNote.textContent='C major';
+    ui.soundNotice.textContent='✓ เสียงพร้อมใช้งาน';
+    status('🔊 ทดสอบเสียงสำเร็จ! หากไม่ได้ยิน ให้ตรวจระดับเสียงมือถือ');
+  }else{status('เสียงถูกปิดอยู่ · กดปุ่ม ♫ เพื่อเปิดเสียงก่อน');}
+ }catch(e){status(`เปิดเสียงไม่ได้: ${e.message}`);ui.soundNotice.textContent='ไม่สามารถเปิดระบบเสียง';}
+}
+function analyzeHandFingerCount(hand){
+ // Compare relative joint distances. Works with rotated, mirrored hands and both handednesses.
+ const dist=(a,b)=>Math.hypot(hand[a].x-hand[b].x,hand[a].y-hand[b].y);
+ let count=0;
+ for(const [tip,pip,mcp] of [[8,6,5],[12,10,9],[16,14,13],[20,18,17]]){
+  const extended=dist(tip,mcp)>dist(pip,mcp)*1.52 && dist(tip,0)>dist(pip,0)*1.045;
+  if(extended)count++;
+ }
+ const thumb = dist(4,17)>dist(3,17)*1.10 && dist(4,5)>dist(3,5)*1.16;
+ if(thumb)count++;
+ return count;
+}
+function observeFingers(hands,now){
+ const raw=Math.min(10,hands.reduce((acc,hand)=>acc+analyzeHandFingerCount(hand),0));
+ ui.detectedFingers.textContent=String(raw);
+ if(raw!==pendingFingerCount){pendingFingerCount=raw;pendingFingerSince=now;}
+ // Only accept settled poses (160ms); avoid repeated notes from AI frame jitter.
+ if(raw!==stableFingerCount && now-pendingFingerSince>=165){
+  stableFingerCount=raw;
+  if(raw>0 && now-lastGestureAt>160){lastGestureAt=now;triggerInstrument(raw,'camera');}
+  if(raw===0)Array.from(ui.instrumentGrid.children).forEach(b=>b.classList.remove('finger-active'));
+ }
+ return raw;
+}
+
 
 function status(message) { if (ui.statusText.textContent !== message) ui.statusText.textContent = message; }
 function audioStatus(message) { if (lastStatusAudio !== message) {ui.audioState.textContent=message;lastStatusAudio=message;} }
@@ -127,7 +267,8 @@ function updateSeek() {
 }
 function loadTrack(t, shouldPlay=false) {
   if (!t) return;
-  const wasPlaying = previewActive || cameraActive && !ui.musicAudio.paused;
+  const wasPlaying = active?.src && (previewActive || cameraActive && !ui.musicAudio.paused);
+  stopDemo();previewActive=false;updatePlayUI();
   active = t;
   ui.musicAudio.pause();
   if(t.src)ui.musicAudio.src = t.src;
@@ -145,7 +286,8 @@ function loadTrack(t, shouldPlay=false) {
   updateTabUI();
   renderPlaylist();
   syncClipEditor();
-  if (!t.src && t.type==='featured')status(`เลือก ${t.name} แล้ว · กรุณาเพิ่มไฟล์เพลงจากเครื่องก่อนเล่นด้วยมือ`);
+  resetMelody();
+  if (!t.src && t.type==='featured')status(`เลือก ${t.name} แล้ว · พร้อมเล่นทำนองฝึกแต่งใหม่ด้วยนิ้วได้ทันที`);
   if ((shouldPlay || wasPlaying) && t.src) void ensurePlayback();
 }
 function updateTabUI(){
@@ -181,7 +323,7 @@ function renderPlaylist(){
     const marker=document.createElement('span');marker.className='track-select-icon';marker.textContent=active.id===t.id?'♪':'↗';
     button.append(number,cover,label,marker);
     button.addEventListener('click',async()=>{
-      if(t.type==='featured'&&!t.src){loadTrack(t,false);pickFeatured(t);return;}
+      if(t.type==='featured'&&!t.src){loadTrack(t,false);status(`เลือก ${t.name} แล้ว · ลองใช้นิ้ว 1–10 เล่นเสียงสังเคราะห์ได้ทันที หรือเพิ่มไฟล์เพลงแยก`);return;}
       await unlockAudio();
       previewActive=true;
       loadTrack(t,true);
@@ -259,9 +401,11 @@ function initAudio(){
   const source=audioContext.createMediaElementSource(ui.musicAudio);
   toneFilter=audioContext.createBiquadFilter();toneFilter.type='lowpass';toneFilter.frequency.value=12000;toneFilter.Q.value=.2;
   musicGain=audioContext.createGain();musicGain.gain.value=0;
+  instrumentGain=audioContext.createGain();instrumentGain.gain.value=.82;
   analyser=audioContext.createAnalyser();analyser.fftSize=256;analyser.smoothingTimeConstant=.84;
   masterGain=audioContext.createGain();masterGain.gain.value=Number(ui.masterVolume.value)/100;
-  source.connect(toneFilter);toneFilter.connect(musicGain);musicGain.connect(analyser);analyser.connect(masterGain);masterGain.connect(audioContext.destination);
+  source.connect(toneFilter);toneFilter.connect(musicGain);musicGain.connect(analyser);
+  instrumentGain.connect(analyser);analyser.connect(masterGain);masterGain.connect(audioContext.destination);
   ui.musicAudio.volume=1;
 }
 async function unlockAudio(){
@@ -269,7 +413,7 @@ async function unlockAudio(){
   if(audioContext.state==='suspended')await audioContext.resume();
 }
 async function ensurePlayback(){
-  if(!active?.src){status('เพลงนี้ยังไม่มีไฟล์เสียง · กรุณาเพิ่มไฟล์ MP3 ของเพลงนี้ก่อน');return false;}
+  if(!active?.src){status('เพลงนี้ยังไม่มีไฟล์ MP3 · โหมดนิ้วสามารถเล่นโน้ตสังเคราะห์ได้ทันที');return false;}
   try{
     if(ui.musicAudio.readyState>=1){const {start,end}=getClip();if(ui.musicAudio.currentTime<start||ui.musicAudio.currentTime>=end-.03)ui.musicAudio.currentTime=start;}
     if(ui.musicAudio.paused)await ui.musicAudio.play();
@@ -287,8 +431,23 @@ function updatePlayUI(){
 async function togglePreview(){
   try{
     await unlockAudio();
-    previewActive=!previewActive;
-    if(previewActive){const played=await ensurePlayback();if(played)status(`กำลังฟัง ${active.name} · เปิดกล้องเพื่อเล่นด้วยมือได้`);else previewActive=false;}
+    if(!active.src){
+      if(demoPlaying){stopDemo();previewActive=false;status('หยุดเล่นทำนองตัวอย่างแล้ว');}
+      else{
+        previewActive=true;demoPlaying=true;ui.soundNotice.textContent='✓ เสียงพร้อมใช้งาน';
+        let demoStep=0;const notes=getPattern();
+        const tick=()=>{
+          if(!demoPlaying)return;
+          const note=notes[demoStep%notes.length];synthNotes([note],.41);
+          ui.lastNote.textContent=noteName(note);demoStep++;ui.melodyProgress.textContent=`${demoStep%notes.length} / ${notes.length}`;
+          demoTimer=setTimeout(tick,420);
+        };
+        tick();status(`กำลังเล่นทำนองตัวอย่างที่แต่งใหม่สำหรับ ${active.name}`);
+      }
+      updatePlayUI();return;
+    }
+    stopDemo();previewActive=!previewActive;
+    if(previewActive){const played=await ensurePlayback();if(played)status(`กำลังฟัง ${active.name} · เล่นนิ้วทับเป็นเครื่องดนตรีได้`);else previewActive=false;}
     else if(!cameraActive)ui.musicAudio.pause();
     updatePlayUI();
   }catch(e){status(`เปิดเสียงไม่ได้: ${e.message}`);}
@@ -309,7 +468,8 @@ function applyEnergy(e){
   ui.intensityNumber.textContent=`${value}%`;
   ui.intensityFill.style.width=`${value}%`;
   ui.activityValue.textContent=activeHandCount?`${activeHandCount} HAND${activeHandCount>1?'S':''} DETECTED`:'AWAITING MOVEMENT';
-  audioStatus(muted?'เสียงถูกปิดอยู่':previewActive?'กำลังทดลองฟังเพลง':!cameraActive?'พร้อมเล่นเมื่อคุณขยับมือ':mode==='continuous'?'กำลังเล่นเพลงต่อเนื่อง':value>12?'กำลังควบคุมเพลงด้วยมือ ✨':'ขยับมือเพื่อเพิ่มเสียง');
+  if(!soundReady)audioStatus('แตะทดสอบเสียง แล้วชูนิ้ว 1–10');
+  else if(muted)audioStatus('เสียงถูกปิดอยู่');
 }
 
 async function getTracker(){
@@ -343,7 +503,8 @@ async function startCamera(){
     // Start media during the tap gesture; crucial for Safari on iPhone.
     initAudio();
     const resumePromise=audioContext.resume();
-    previewActive=false;updatePlayUI();
+    stopDemo();previewActive=false;updatePlayUI();
+    // Built-in synth works even if the selected song has no uploaded MP3.
     const audioStart=active?.src?ui.musicAudio.play().catch(e=>console.warn('Awaiting user gesture for playback',e)):Promise.resolve();
     if(!navigator.mediaDevices?.getUserMedia)throw new Error('ต้องเปิดผ่าน HTTPS หรือ localhost');
     const cameraPromise=navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:facingMode},width:{ideal:960},height:{ideal:720},frameRate:{ideal:30,max:30}}}).then(s=>{
@@ -361,8 +522,9 @@ async function startCamera(){
     ui.cameraEmpty.classList.add('is-hidden');
     ui.stopCamera.disabled=false;ui.flipCamera.disabled=false;ui.cameraRing.classList.add('active');
     ui.video.classList.add('active');
-    lastVideoTime=-1;lastInferMs=0;previousCenters=[];lastMotionAt=-Infinity;
-    status('เปิดกล้องแล้ว · ยกมือในกรอบแล้วโบกเพื่อเล่นเพลง 🎶');
+    lastVideoTime=-1;lastInferMs=0;previousCenters=[];lastMotionAt=-Infinity;stableFingerCount=-1;pendingFingerCount=-1;
+    ui.soundNotice.textContent='✓ เครื่องดนตรีพร้อมเล่น';
+    status('เปิดกล้องแล้ว · ชูนิ้ว 1–10 และเปลี่ยนจำนวนเพื่อเล่นโน้ตหรือคอร์ด 🎶');
     frameId=requestAnimationFrame(detectFrame);
   }catch(e){
     console.error('Camera start failed',e);
@@ -382,7 +544,7 @@ function stopCamera({preserveAudio=false}={}){
   ui.stopCamera.disabled=true;ui.flipCamera.disabled=true;ui.startCamera.disabled=false;ui.startCamera.textContent='◎ เปิดกล้อง เริ่มเล่น ↗';
   ui.trackingLabel.textContent='WAITING FOR HAND';ui.fpsLabel.textContent='— FPS';
   ui.handCanvas.getContext('2d').clearRect(0,0,ui.handCanvas.width,ui.handCanvas.height);
-  targetEnergy=0;activeHandCount=0;previousCenters=[];lastMotionAt=-Infinity;
+  targetEnergy=0;activeHandCount=0;previousCenters=[];lastMotionAt=-Infinity;stableFingerCount=-1;pendingFingerCount=-1;ui.detectedFingers.textContent='0';
   if(!preserveAudio && !previewActive)ui.musicAudio.pause();
   if(!preserveAudio)status('ปิดกล้องแล้ว · คุณยังสามารถกด ▶ เพื่อฟังเพลงได้');
 }
@@ -430,6 +592,7 @@ function detectFrame(now){
   try{points=tracker.detectForVideo(ui.video,now).landmarks||[];}
   catch(e){console.error('Tracker failed',e);stopCamera();status('เกิดข้อผิดพลาดระหว่างตรวจจับมือ · กรุณาเปิดกล้องอีกครั้ง');return;}
   drawHands(points);
+  observeFingers(points,now);
   activeHandCount=points.length;
   const centers=points.map(centerOf);
   let biggest=0,openCount=0;
@@ -448,7 +611,8 @@ function detectFrame(now){
   targetEnergy=open&&activeMotion?clamp(.23+handSpeed*1.65+(points.length>1?.1:0),0,1):0;
   ui.trackingLabel.textContent=points.length?`${points.length} HAND${points.length>1?'S':''} FOUND · ${open?'OPEN':'FIST'}`:'SEARCHING FOR HAND';
   ui.fpsLabel.textContent=`${Math.round(1/dt)} FPS`;
-  status(!points.length?'ยังไม่เห็นมือ · ลองขยับเข้ามาหน้ากล้อง':!open?'ตรวจพบกำมือ · กำลังลดเสียง':activeMotion?'✦ กำลังเล่นเพลงด้วยมือของคุณ': 'ตรวจพบมือแล้ว · โบกมือเพื่อเพิ่มเสียงเพลง');
+  // Keep finger-note feedback visible; movement only affects the optional backing audio.
+  if(!points.length)status('ยังไม่เห็นมือ · ลองวางมือให้เห็นครบทุกนิ้วหน้ากล้อง');
 }
 function resizeVisualizer(){
   const c=ui.visualizer,rect=c.getBoundingClientRect();
@@ -511,10 +675,11 @@ ui.startCamera.addEventListener('click',()=>void startCamera());
 ui.stopCamera.addEventListener('click',()=>stopCamera());
 ui.flipCamera.addEventListener('click',()=>void flipCamera());
 ui.previewAudio.addEventListener('click',()=>void togglePreview());
-ui.previousTrack.addEventListener('click',async()=>{await unlockAudio();previewActive=true;chooseNext(-1);updatePlayUI();});
-ui.nextTrack.addEventListener('click',async()=>{await unlockAudio();previewActive=true;chooseNext(1);updatePlayUI();});
+ui.previousTrack.addEventListener('click',async()=>{await unlockAudio();chooseNext(-1);});
+ui.nextTrack.addEventListener('click',async()=>{await unlockAudio();chooseNext(1);});
 ui.muteAudio.addEventListener('click',()=>{
   muted=!muted;ui.muteAudio.setAttribute('aria-pressed',String(muted));
+  ui.soundNotice.textContent=muted?'⚠ ปิดเสียงอยู่ · แตะ ♫ เพื่อเปิด':'✓ เปิดเสียงแล้ว';
   ui.muteAudio.textContent=muted?'♩':'♫';ui.muteAudio.setAttribute('aria-label',muted?'เปิดเสียง':'ปิดเสียง');
   if(masterGain&&audioContext)masterGain.gain.setTargetAtTime(muted?0:Number(ui.masterVolume.value)/100,audioContext.currentTime,.05);
 });
@@ -522,6 +687,10 @@ ui.masterVolume.addEventListener('input',()=>{
   ui.volumeValue.textContent=`${ui.masterVolume.value}%`;
   if(masterGain&&audioContext&&!muted)masterGain.gain.setTargetAtTime(Number(ui.masterVolume.value)/100,audioContext.currentTime,.08);
 });
+ui.melodyMode.addEventListener('click',()=>setInstrumentMode('melody'));
+ui.chordMode.addEventListener('click',()=>setInstrumentMode('chords'));
+ui.testSound.addEventListener('click',()=>void testInstrument());
+ui.resetMelody.addEventListener('click',()=>{resetMelody();status('เริ่มทำนองตั้งแต่โน้ตแรกแล้ว');});
 ui.gestureMode.addEventListener('click',()=>setMode('gesture'));
 ui.continuousMode.addEventListener('click',()=>setMode('continuous'));
 ui.featuredTab.addEventListener('click',()=>{activeTab='featured';updateTabUI();renderPlaylist();});
@@ -545,9 +714,9 @@ ui.resetTrim.addEventListener('click',()=>{active.start=0;active.end=getDuration
 for(const input of [ui.startSecond,ui.endSecond])input.addEventListener('change',updateClipInputs);
 window.addEventListener('resize',resizeVisualizer);
 window.addEventListener('pagehide',()=>{
-  stopCamera({preserveAudio:true});ui.musicAudio.pause();uploads.forEach(t=>URL.revokeObjectURL(t.src));featureObjectUrls.forEach(url=>URL.revokeObjectURL(url));
+  stopDemo();stopCamera({preserveAudio:true});ui.musicAudio.pause();uploads.forEach(t=>URL.revokeObjectURL(t.src));featureObjectUrls.forEach(url=>URL.revokeObjectURL(url));
   if(audioContext)void audioContext.close();
 });
-loadTrack(FEATURED[0]);
+setupInstrumentUI();setInstrumentMode('melody');loadTrack(FEATURED[0]);
 void restoreFeatureAudio();
 resizeVisualizer();requestAnimationFrame(animate);

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#fcfafb">
   <meta name="description" content="Blooming Hands Music Studio — เลือกเพลง Txrbo, LANDOKMAI หรือเพลงบรรเลง แล้วใช้การเคลื่อนไหวมือควบคุมเสียง">
-  <title>Blooming Hands | Interactive Music Studio</title>
+  <title>Blooming Hands V4 | Finger Melody & 10-Chord Studio</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -23,10 +23,10 @@
 
     <main id="home">
       <section class="hero">
-        <div class="hero-main"><div class="eyebrow"><span class="eyebrow-star">✳</span> THE MUSIC STARTS WITH YOU <span class="eyebrow-line"></span> VOL. 03</div>
+        <div class="hero-main"><div class="eyebrow"><span class="eyebrow-star">✳</span> THE MUSIC STARTS WITH YOU <span class="eyebrow-line"></span> VOL. 04</div>
           <h1>Move your hands.<br><span>Feel the <em>music.</em></span><span class="hero-flower" aria-hidden="true">✿</span></h1>
-          <p>เปลี่ยนทุกการเคลื่อนไหวของมือให้กลายเป็นเสียงเพลง <span class="dot-text">·</span> เลือกเพลงที่ชอบ เปิดกล้อง แล้วเล่นไปกับจังหวะของคุณ</p>
-          <div class="hero-pills"><span><span class="pill-icon">♫</span> เพลงที่ขอ 2 เพลง + บรรเลง 6 เพลง</span><span><span class="pill-icon">✋</span> ตรวจจับมือแบบเรียลไทม์</span><span><span class="pill-icon">♡</span> รองรับมือถือ</span></div>
+          <p>ชูนิ้ว 1–10 เพื่อเล่นโน้ตและคอร์ดด้วยสองมือ <span class="dot-text">·</span> เลือกเพลงที่ชอบ เปิดกล้อง แล้วเล่นไปกับจังหวะของคุณ</p>
+          <div class="hero-pills"><span><span class="pill-icon">♫</span> เพลงที่ขอ 2 เพลง + บรรเลง 6 เพลง</span><span><span class="pill-icon">✋</span> นับนิ้วได้สูงสุด 10 นิ้ว</span><span><span class="pill-icon">♡</span> รองรับมือถือ</span></div>
         </div>
         <aside class="hero-sticker" aria-hidden="true"><span class="sticker-circle">✺</span><span class="sticker-text">LISTEN.<br>MOVE.<br>REPEAT.</span><div class="sticker-waves"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><small>YOUR CREATIVE MOMENT</small></aside>
       </section>
@@ -43,22 +43,30 @@
               <div class="camera-overlay" id="cameraEmpty">
                 <div class="camera-icon-wrap" aria-hidden="true"><svg viewBox="0 0 96 96" fill="none"><path d="M31 53V24c0-4 3-7 7-7s7 3 7 7v22-30c0-4 3-7 7-7s7 3 7 7v31-24c0-4 3-7 7-7s7 3 7 7v31-14c0-4 3-7 7-7s7 3 7 7v26c0 19-14 32-34 32h-2c-11 0-19-4-26-13L13 62c-3-4-2-9 2-12 4-3 9-2 12 1l4 5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"/><path d="M9 27 4 23M10 42H3M25 13 22 6" stroke="currentColor" stroke-linecap="round" stroke-width="2.5"/></svg></div>
                 <div class="camera-overlay-top">YOUR HANDS. YOUR SOUND.</div>
-                <h3>พร้อมสนุกกับเสียงเพลงหรือยัง?</h3><p>เปิดกล้อง แล้วยกมือขึ้นมาในกรอบ<br>เพื่อควบคุมเพลงตามการเคลื่อนไหว</p>
+                <h3>พร้อมสนุกกับเสียงเพลงหรือยัง?</h3><p>ชูนิ้ว 1–10 นิ้ว (ทั้งสองมือ)<br>เพื่อเล่นโน้ตหรือคอร์ดในทันที</p>
                 <button type="button" id="startCamera" class="btn btn-primary"><span class="btn-icon">◎</span> เปิดกล้อง เริ่มเล่น <span>↗</span></button>
                 <small>ประมวลผลภาพกล้องภายในเบราว์เซอร์เท่านั้น</small>
               </div>
               <div class="tracking-pill" id="trackingPill"><span class="tracking-dot"></span><span id="trackingLabel">WAITING FOR HAND</span></div>
               <div class="camera-fps" id="fpsLabel">— FPS</div>
             </div>
+            <section class="instrument-panel" aria-label="เครื่องดนตรีตรวจจับนิ้ว">
+              <div class="instrument-head"><span class="card-overline">LIVE INSTRUMENT / 10 FINGERS</span><span id="soundNotice" class="sound-notice">แตะทดสอบเสียงก่อนเปิดกล้อง</span></div>
+              <div class="instrument-controls"><div class="instrument-modes" role="group" aria-label="รูปแบบเครื่องดนตรี"><button type="button" id="melodyMode" class="selected" aria-pressed="true">♪ เล่นเมโลดี</button><button type="button" id="chordMode" aria-pressed="false">♬ คอร์ด 10 นิ้ว</button></div><button type="button" id="testSound" class="sound-test">🔊 ทดสอบเสียง</button></div>
+              <div class="finger-dashboard"><div class="finger-count"><span>นิ้วที่ตรวจพบ</span><strong id="detectedFingers">0</strong><small>/ 10</small></div><div class="played-note"><span>เสียงที่เล่นล่าสุด</span><strong id="lastNote">—</strong></div><div class="melody-step"><span>ลำดับโน้ต</span><strong id="melodyProgress">0 / 16</strong><button type="button" id="resetMelody">↺ เริ่มใหม่</button></div></div>
+              <p id="instrumentHint" class="instrument-hint">เปลี่ยนจำนวนนิ้วเพื่อเล่นทำนองทีละโน้ต</p>
+              <div class="instrument-grid-label">ลองแตะปุ่ม 1–10 เพื่อเล่นเสียงโดยไม่ต้องเปิดกล้อง</div><div id="instrumentGrid" class="instrument-grid"></div>
+              <p class="original-note">ทำนองฝึกและคอร์ดในเว็บเป็นเสียงสังเคราะห์ใหม่ ไม่ใช่โน้ตเพลงต้นฉบับของศิลปิน</p>
+            </section>
             <div class="camera-actions"><div class="camera-status"><span class="status-indicator" id="cameraRing"></span><span id="statusText" role="status" aria-live="polite">เลือกเพลง หรือเปิดกล้องเพื่อเริ่มสนุกได้เลย</span></div><div class="camera-buttons"><button id="flipCamera" type="button" class="action-text" disabled title="สลับกล้องหน้าและกล้องหลัง">↻ สลับกล้อง</button><button id="stopCamera" type="button" class="action-text" disabled>× ปิดกล้อง</button></div></div>
           </article>
-          <section class="hint-grid" id="how" aria-label="วิธีใช้ท่ามือ"><div class="hint-card"><span class="hint-number">01</span><span class="hint-icon">✋</span><div><strong>แบมือ + โบก</strong><p>เริ่มเพลงและเร่งระดับเสียง</p></div></div><div class="hint-card"><span class="hint-number">02</span><span class="hint-icon">〰️</span><div><strong>ขยับขึ้น / ลง</strong><p>เพิ่มหรือลดความสว่างของเสียง</p></div></div><div class="hint-card"><span class="hint-number">03</span><span class="hint-icon">✊</span><div><strong>กำมือ</strong><p>ค่อย ๆ ลดเสียงลงอย่างนุ่มนวล</p></div></div></section>
+          <section class="hint-grid" id="how" aria-label="วิธีใช้ท่ามือ"><div class="hint-card"><span class="hint-number">01</span><span class="hint-icon">☝️</span><div><strong>ชู 1–5 นิ้ว</strong><p>แต่ละท่ากระตุ้นเสียงโน้ตหรือคอร์ด</p></div></div><div class="hint-card"><span class="hint-number">02</span><span class="hint-icon">👐</span><div><strong>ใช้ 2 มือ</strong><p>รวมกันได้สูงสุด 10 นิ้ว</p></div></div><div class="hint-card"><span class="hint-number">03</span><span class="hint-icon">🎶</span><div><strong>เปลี่ยนท่า</strong><p>เล่นโน้ตถัดไปหรือเปลี่ยนคอร์ด</p></div></div></section>
         </div>
 
         <div class="right-column">
           <article class="player-card">
             <header class="player-label"><span><span class="pink-signal"></span> NOW PLAYING</span><span id="sourceLabel">ORIGINAL INSTRUMENTAL</span></header>
-            <div class="album-block"><div class="album-art cover-bloom" id="albumArt"><span class="album-sun"></span><span class="album-symbol" id="albumSymbol">✿</span><span class="album-corner">BH / 01</span></div><div class="album-details"><div class="mini-album-label" id="genreText">DREAM POP · 98 BPM</div><h2 id="songTitle">Blooming Garden</h2><div class="song-caption" id="songSubtitle">สวนดอกไม้ · ฟังสบายอบอุ่น</div><div class="playing-state"><span class="playing-state-dot"></span><span id="audioState">พร้อมเล่นเมื่อคุณขยับมือ</span></div></div></div>
+            <div class="album-block"><div class="album-art cover-bloom" id="albumArt"><span class="album-sun"></span><span class="album-symbol" id="albumSymbol">✿</span><span class="album-corner">BH / 01</span></div><div class="album-details"><div class="mini-album-label" id="genreText">DREAM POP · 98 BPM</div><h2 id="songTitle">Blooming Garden</h2><div class="song-caption" id="songSubtitle">สวนดอกไม้ · ฟังสบายอบอุ่น</div><div class="playing-state"><span class="playing-state-dot"></span><span id="audioState">แตะทดสอบเสียง แล้วชูนิ้ว 1–10</span></div></div></div>
             <canvas id="visualizer" aria-label="กราฟแสดงคลื่นเสียง" height="130"></canvas>
             <div class="seek-row"><span id="currentTime">0:00</span><input type="range" id="seekBar" min="0" max="1000" step="1" value="0" aria-label="เลื่อนไปยังช่วงเวลาอื่นของเพลง"><span id="durationTime">0:00</span></div>
             <div class="transport"><button id="previousTrack" class="transport-small" type="button" title="เพลงก่อนหน้า" aria-label="เพลงก่อนหน้า">Ⅰ◀</button><button id="previewAudio" type="button" class="transport-play" aria-label="ฟังเพลงหรือหยุดเพลง"><span id="playIcon">▶</span></button><button id="nextTrack" class="transport-small" type="button" title="เพลงถัดไป" aria-label="เพลงถัดไป">▶Ⅰ</button><button id="muteAudio" type="button" class="transport-small transport-mute" aria-label="ปิดเสียง" aria-pressed="false">♫</button></div>
@@ -66,20 +74,20 @@
             <div class="live-row"><div><span class="control-title">HAND ENERGY</span><strong id="intensityNumber">0%</strong></div><span class="energy-tag" id="activityValue">AWAITING MOVEMENT</span></div><div class="intensity-meter"><div id="intensityFill"></div></div>
             <div class="settings-line"><label for="masterVolume">ความดังสูงสุด <span id="volumeValue">85%</span></label><input id="masterVolume" type="range" min="0" max="100" value="85"></div>
             <div class="mode-row"><span>โหมดควบคุมเสียง</span><div class="mode-switch" role="group" aria-label="โหมดเล่นเพลง"><button id="gestureMode" class="selected" type="button" aria-pressed="true">✋ ตามมือ</button><button id="continuousMode" type="button" aria-pressed="false">♫ ต่อเนื่อง</button></div></div>
-            <p class="helper-caption" id="modeHelp">โหมดตามมือ: แบมือและขยับเพื่อเพิ่มเสียง หากกำมือหรือไม่พบมือเสียงจะค่อย ๆ เบาลง</p>
+            <p class="helper-caption" id="modeHelp">ปรับเฉพาะเสียงเพลง MP3 ที่เล่นเป็นแบ็กกิ้ง · เสียงโน้ตและคอร์ดจากนิ้วเล่นแยกอิสระ</p>
           </article>
 
           <article class="playlist-card" id="songs"><header class="playlist-header"><div><div class="card-overline">02 / THE SOUNDTRACK</div><h2>Pick your <em>vibe.</em></h2></div><span id="trackCount" class="track-count">06 TRACKS</span></header>
             <div class="library-tabs"><button id="featuredTab" type="button" class="tab active" aria-pressed="true">เพลงที่ขอ <span>02</span></button><button id="originalTab" type="button" class="tab" aria-pressed="false">เพลงบรรเลง <span>06</span></button><button id="myMusicTab" type="button" class="tab" aria-pressed="false">เพลงของฉัน <span id="uploadCount">00</span></button></div>
             <div id="playlist" class="playlist" aria-label="รายการเพลง"></div>
-            <div class="feature-notice" id="featuredInstructions"><span class="feature-notice-icon">♡</span><span><strong>เลือกเพลงโปรด แล้วเล่นด้วยมือ</strong><small>เพิ่มไฟล์เพลงจากอุปกรณ์ของคุณเพื่อควบคุมเสียงในเว็บ · ปุ่ม YouTube ใช้ฟังต้นฉบับแยกต่างหาก</small></span></div>
+            <div class="feature-notice" id="featuredInstructions"><span class="feature-notice-icon">♡</span><span><strong>เล่นเครื่องดนตรีได้เลย ไม่ต้องเพิ่ม MP3</strong><small>มีทำนองฝึกแต่งใหม่สำหรับแต่ละเพลง ไม่ใช่ทำนองของศิลปิน · สามารถเพิ่มไฟล์เพลงที่มีสิทธิ์ใช้เพื่อเล่นเป็นแบ็กกิ้งได้</small></span></div>
             <input type="file" hidden id="featureUpload" accept="audio/*,.mp3,.wav,.m4a,.ogg,.aac,.flac">
             <div class="upload-zone"><label class="upload-button" for="audioUpload"><span class="upload-plus">＋</span><span><strong>เพิ่มเพลงจากเครื่อง</strong><small>MP3, WAV, M4A, OGG · เลือกได้หลายเพลง</small></span><span class="upload-arrow">↗</span></label><input type="file" multiple hidden id="audioUpload" accept="audio/*,.mp3,.wav,.m4a,.ogg,.aac,.flac"></div>
             <div class="clip-editor" id="trimControls" hidden><div class="clip-title"><span>✂ เลือกช่วงเพลงที่ต้องการวน</span><button id="resetTrim" type="button">ทั้งเพลง</button></div><div class="clip-inputs"><label>เริ่มที่ (วินาที)<input id="startSecond" type="number" min="0" step="0.5" value="0"></label><label>จบที่ (วินาที)<input id="endSecond" type="number" min="0" step="0.5" value="30"></label></div><div class="clip-hint">กำหนดช่วงสำหรับเล่นเฉพาะท่อนที่ต้องการ · ตั้งเป็นทั้งเพลงเพื่อเล่นต่ออัตโนมัติ</div></div>
           </article>
         </div>
       </section>
-      <section class="footer-note"><span class="footer-note-icon">✦</span><div><strong>Music made to move with you.</strong><p>เพลงตัวอย่างทั้ง 6 เป็นดนตรีสังเคราะห์ที่สร้างขึ้นใหม่ ไม่ใช่เพลง LANDOKMAI หรืองานบันทึกเสียงจากศิลปินอื่น คุณเพิ่มเพลงที่มีสิทธิ์ใช้งานได้จากเครื่องของคุณ ไฟล์เพลงไม่ถูกอัปโหลดขึ้นเซิร์ฟเวอร์</p></div></section>
+      <section class="footer-note"><span class="footer-note-icon">✦</span><div><strong>10 fingers. 10 chords. Your own melody.</strong><p>เพลงตัวอย่างทั้ง 6 เป็นดนตรีสังเคราะห์ที่สร้างขึ้นใหม่ ไม่ใช่เพลง LANDOKMAI หรืองานบันทึกเสียงจากศิลปินอื่น คุณเพิ่มเพลงที่มีสิทธิ์ใช้งานได้จากเครื่องของคุณ ไฟล์เพลงไม่ถูกอัปโหลดขึ้นเซิร์ฟเวอร์</p></div></section>
     </main>
     <footer class="footer"><span>✳ BLOOMING HANDS / MUSIC STUDIO</span><span>MADE FOR YOUR CREATIVE MOMENTS · 2026</span><span>CAMERA STAYS ON YOUR DEVICE ♡</span></footer>
   </div>
